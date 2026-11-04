@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Revision Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column like an exercise book — timer on top, then week chart, then the log. */
+:root {
+  --paper: #f4f6f8; --card: #ffffff; --ink: #18212d; --muted: #5d6b7c; --rule: #dbe1e8;
+  --accent: #2457a6; --accent-ink: #ffffff; --hl: #f6d365; --danger: #b3261e;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #10151c; --card: #18202a; --ink: #e8edf3; --muted: #9aa8b8; --rule: #2a3542;
+  --accent: #7fa8ec; --accent-ink: #0d1520; --hl: #e2b93b; --danger: #ff8a80; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #10151c; --card: #18202a; --ink: #e8edf3; --muted: #9aa8b8; --rule: #2a3542;
+  --accent: #7fa8ec; --accent-ink: #0d1520; --hl: #e2b93b; --danger: #ff8a80; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--paper); color: var(--ink); font: 16px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px }
+.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 20px }
+h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance }
+h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em }
+h1 mark { background: linear-gradient(transparent 55%, var(--hl) 55%); color: inherit; padding: 0 2px }
+h2 { font-size: 1.05rem; font-weight: 600 }
+.sub { color: var(--muted); margin: 4px 0 0 }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 18px; display: grid; gap: 14px; min-width: 0 }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
+.between { justify-content: space-between }
+label.lbl { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700 }
+input, select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; min-width: 0 }
+button { font: inherit; font-weight: 700; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper); color: var(--ink) }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+button.link { background: none; border: 0; padding: 4px; color: var(--muted); font-weight: 400; text-decoration: underline }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--hl); outline-offset: 2px }
+.clock { font: 700 clamp(2.6rem, 12vw, 3.6rem)/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px }
+.stat { border-top: 3px solid var(--rule); padding-top: 8px }
+.stat b { display: block; font: 700 1.5rem var(--mono); font-variant-numeric: tabular-nums }
+.stat span { font-size: .8rem; color: var(--muted) }
+.stat.on { border-top-color: var(--hl) }
+.chart svg { width: 100%; height: auto; display: block }
+.chart text { fill: var(--muted); font: 11px var(--mono) }
+ul.log { list-style: none; margin: 0; padding: 0; display: grid }
+ul.log li { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
+ul.log li:last-child { border-bottom: 0 }
+.dot { width: 10px; height: 10px; border-radius: 50% }
+.mins { font: 500 .9rem var(--mono); font-variant-numeric: tabular-nums }
+.meta { font-size: .8rem; color: var(--muted) }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; border: 1px solid var(--rule); border-radius: 999px; padding: 3px 4px 3px 10px }
+.chip button { padding: 0 6px; border: 0; background: none; color: var(--muted) }
+.notice { background: color-mix(in srgb, var(--hl) 30%, var(--card)); border-radius: 8px; padding: 10px 12px; font-size: .9rem }
+.empty { color: var(--muted); font-size: .9rem }
+@media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr 1fr } .stat b { font-size: 1.2rem } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Revision <mark>Tracker</mark></h1>
+    <p class="sub">Time your study sessions, keep a streak, and see your week at a glance.</p>
+  </header>
+
+  <div class="notice" id="exampleNote" hidden>
+    These are example sessions so you can see how it works.
+    <button class="link" id="clearExamples">Clear examples</button>
+  </div>
+
+  <section class="panel" aria-labelledby="timerH">
+    <div class="row between">
+      <h2 id="timerH">Study timer</h2>
+      <select id="subject" aria-label="Subject"></select>
+    </div>
+    <div class="clock" id="clock" aria-live="off">00:00</div>
+    <div class="row">
+      <button class="primary" id="startBtn">Start</button>
+      <button id="stopBtn" disabled>Stop &amp; save</button>
+      <button class="link" id="resetBtn">Reset</button>
+    </div>
+    <p class="meta" id="timerMsg" role="status"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="statsH">
+    <div class="row between">
+      <h2 id="statsH">This week</h2>
+      <div class="row"><label class="lbl" for="goal">Daily goal (min)</label><input id="goal" type="number" min="5" step="5" style="width:80px"></div>
+    </div>
+    <div class="stats">
+      <div class="stat" id="todayStat"><b id="today">0</b><span>min today</span></div>
+      <div class="stat"><b id="week">0h</b><span>this week</span></div>
+      <div class="stat"><b id="streak">0</b><span>day streak</span></div>
+    </div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="addH">
+    <h2 id="addH">Log a session by hand</h2>
+    <form class="row" id="manual">
+      <select id="mSubject" aria-label="Subject"></select>
+      <input id="mMins" type="number" min="1" placeholder="Minutes" aria-label="Minutes" style="width:100px" required>
+      <input id="mDate" type="date" aria-label="Date" required>
+      <button class="primary" type="submit">Add</button>
+    </form>
+  </section>
+
+  <section class="panel" aria-labelledby="subH">
+    <h2 id="subH">Subjects</h2>
+    <div class="chips" id="chips"></div>
+    <form class="row" id="addSubject">
+      <input id="newSub" placeholder="New subject, e.g. Physics" aria-label="New subject" required>
+      <button type="submit">Add subject</button>
+    </form>
+  </section>
+
+  <section class="panel" aria-labelledby="logH">
+    <h2 id="logH">Recent sessions</h2>
+    <ul class="log" id="log"></ul>
+  </section>
+</div>
+
+<script>
+const KEY = 'revision-tracker-v1';
+const COLORS = ['#2457a6','#c2410c','#15803d','#9333ea','#0e7490','#be185d','#a16207'];
+const pad = n => String(n).padStart(2, '0');
+const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
+const $ = id => document.getElementById(id);
+
+function exampleData() {
+  const subs = [{name:'Maths',color:COLORS[0]},{name:'English',color:COLORS[1]},{name:'Biology',color:COLORS[2]}];
+  const plan = [[0,'Maths',35],[1,'Biology',50],[1,'English',25],[2,'Maths',45],[3,'English',40],[4,'Biology',30],[4,'Maths',20],[5,'Maths',60]];
+  const today = new Date();
+  return { goal: 60, subjects: subs, sessions: plan.map(([ago,s,m],i) => ({ id: 'ex'+i, subject: s, mins: m, date: dayKey(addDays(today,-ago)), example: true })) };
+}
+function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.subjects) return s } catch(e) {} return exampleData() }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)) } catch(e) {} }
+let state = load();
+
+function subColor(name) { const s = state.subjects.find(x => x.name === name); return s ? s.color : 'var(--muted)' }
+function minsOn(key) { return state.sessions.filter(s => s.date === key).reduce((a,s) => a + s.mins, 0) }
+
+function render() {
+  // subject pickers + chips
+  const opts = state.subjects.map(s => `<option>${esc(s.name)}</option>`).join('') || '<option value="">Add a subject first</option>';
+  for (const id of ['subject','mSubject']) { const el = $(id), v = el.value; el.innerHTML = opts; if ([...el.options].some(o=>o.value===v)) el.value = v }
+  $('chips').innerHTML = state.subjects.length ? state.subjects.map((s,i) =>
+    `<span class="chip"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<button aria-label="Remove ${esc(s.name)}" data-rm="${i}">×</button></span>`).join('')
+    : '<span class="empty">No subjects yet. Add one below.</span>';
+
+  // stats
+  const now = new Date(), tKey = dayKey(now);
+  const today = minsOn(tKey);
+  $('today').textContent = today;
+  $('todayStat').classList.toggle('on', today >= state.goal);
+  $('goal').value = state.goal;
+  let week = 0; for (let i = 0; i < 7; i++) week += minsOn(dayKey(addDays(now,-i)));
+  $('week').textContent = (week/60).toFixed(1) + 'h';
+  let streak = 0, d = minsOn(tKey) > 0 ? now : addDays(now,-1);
+  while (minsOn(dayKey(d)) > 0) { streak++; d = addDays(d,-1) }
+  $('streak').textContent = streak;
+
+  drawChart(now);
+
+  // log
+  const list = [...state.sessions].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 15);
+  $('log').innerHTML = list.length ? list.map(s => `<li><span class="dot" style="background:${subColor(s.subject)}"></span>
+    <span>${esc(s.subject)}<br><span class="meta">${fmtDate(s.date)}</span></span>
+    <span class="mins">${s.mins} min</span><button class="link" data-del="${s.id}" aria-label="Delete session">Delete</button></li>`).join('')
+    : '<li class="empty" style="display:block">No sessions yet. Start the timer to log your first one.</li>';
+  $('exampleNote').hidden = !state.sessions.some(s => s.example);
+}
+
+function drawChart(now) {
+  const days = [...Array(7)].map((_,i) => addDays(now, i-6));
+  const vals = days.map(d => minsOn(dayKey(d)));
+  const W = 560, H = 190, L = 34, B = 24, T = 10, cw = (W-L)/7;
+  const max = Math.max(state.goal, ...vals, 30), top = Math.ceil(max/30)*30;
+  const y = v => T + (H-T-B) * (1 - v/top);
+  let g = '';
+  for (let v = 0; v <= top; v += top/3) g += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${Math.round(v)}</text>`;
+  g += `<line x1="${L}" x2="${W}" y1="${y(state.goal)}" y2="${y(state.goal)}" stroke="var(--hl)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  days.forEach((d,i) => {
+    const x = L + i*cw + cw*0.2, w = cw*0.6, v = vals[i];
+    g += `<rect x="${x}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="4" fill="${i===6?'var(--accent)':'color-mix(in srgb, var(--accent) 45%, var(--card))'}"><title>${v} min</title></rect>`;
+    g += `<text x="${x+w/2}" y="${H-6}" text-anchor="middle">${d.toLocaleDateString('en-GB',{weekday:'short'})}</text>`;
+  });
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Minutes studied each day for the last 7 days; dashed line is your daily goal">${g}</svg>`;
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate = k => new Date(k+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+function addSession(subject, mins, date) {
+  state.sessions.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), subject, mins, date });
+  save(); render();
+}
+
+// timer
+let startAt = null, elapsed = 0, tick = null;
+const total = () => elapsed + (startAt ? Date.now() - startAt : 0);
+function showClock() { const s = Math.floor(total()/1000); $('clock').textContent = (s>=3600? Math.floor(s/3600)+':' : '') + pad(Math.floor(s/60)%60) + ':' + pad(s%60) }
+$('startBtn').onclick = () => {
+  if (!state.subjects.length) { $('timerMsg').textContent = 'Add a subject first.'; return }
+  if (startAt) { elapsed += Date.now() - startAt; startAt = null; clearInterval(tick); $('startBtn').textContent = 'Resume' }
+  else { startAt = Date.now(); tick = setInterval(showClock, 250); $('startBtn').textContent = 'Pause' }
+  $('stopBtn').disabled = false; $('timerMsg').textContent = '';
+};
+$('stopBtn').onclick = () => {
+  const mins = Math.round(total()/60000);
+  resetTimer();
+  if (mins < 1) { $('timerMsg').textContent = 'Session was under a minute, so it was not saved.'; return }
+  addSession($('subject').value, mins, dayKey(new Date()));
+  $('timerMsg').textContent = `Saved ${mins} min of ${$('subject').value}.`;
+};
+function resetTimer() { clearInterval(tick); startAt = null; elapsed = 0; showClock(); $('startBtn').textContent = 'Start'; $('stopBtn').disabled = true }
+$('resetBtn').onclick = () => { resetTimer(); $('timerMsg').textContent = '' };
+
+// forms & actions
+$('mDate').value = dayKey(new Date());
+$('manual').onsubmit = e => { e.preventDefault(); const m = parseInt($('mMins').value,10);
+  if (!state.subjects.length || !(m > 0)) return; addSession($('mSubject').value, m, $('mDate').value); $('mMins').value = '' };
+$('addSubject').onsubmit = e => { e.preventDefault(); const n = $('newSub').value.trim();
+  if (!n || state.subjects.some(s => s.name.toLowerCase() === n.toLowerCase())) return;
+  state.subjects.push({ name: n, color: COLORS[state.subjects.length % COLORS.length] }); $('newSub').value = ''; save(); render() };
+$('goal').onchange = () => { const g = parseInt($('goal').value,10); if (g > 0) { state.goal = g; save(); render() } };
+$('clearExamples').onclick = () => { state = { goal: state.goal, subjects: [], sessions: [] }; save(); render() };
+document.addEventListener('click', e => {
+  const del = e.target.dataset.del, rm = e.target.dataset.rm;
+  if (del) { state.sessions = state.sessions.filter(s => s.id !== del); save(); render() }
+  if (rm !== undefined) { state.subjects.splice(+rm, 1); save(); render() }
+});
+render();
+</script>
+</body>
+</html>
