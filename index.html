@@ -59,6 +59,9 @@ ul.log li:last-child { border-bottom: 0 }
 .chip button { padding: 0 6px; border: 0; background: none; color: var(--muted) }
 .notice { background: color-mix(in srgb, var(--hl) 30%, var(--card)); border-radius: 8px; padding: 10px 12px; font-size: .9rem }
 .empty { color: var(--muted); font-size: .9rem }
+.phase { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-ink) }
+.phase.break { background: var(--hl); color: #18212d }
+.filebtn { font-weight: 700; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper) }
 @media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr 1fr } .stat b { font-size: 1.2rem } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important } }
 </style>
@@ -79,8 +82,12 @@ ul.log li:last-child { border-bottom: 0 }
   <section class="panel" aria-labelledby="timerH">
     <div class="row between">
       <h2 id="timerH">Study timer</h2>
-      <select id="subject" aria-label="Subject"></select>
+      <div class="row">
+        <select id="mode" aria-label="Timer mode"><option value="stopwatch">Stopwatch</option><option value="pomo">Pomodoro 25 / 5</option></select>
+        <select id="subject" aria-label="Subject"></select>
+      </div>
     </div>
+    <div class="row" id="pomoInfo" hidden><span class="phase" id="phase">Focus</span><span class="meta" id="round">Round 1 of 4</span></div>
     <div class="clock" id="clock" aria-live="off">00:00</div>
     <div class="row">
       <button class="primary" id="startBtn">Start</button>
@@ -125,6 +132,18 @@ ul.log li:last-child { border-bottom: 0 }
   <section class="panel" aria-labelledby="logH">
     <h2 id="logH">Recent sessions</h2>
     <ul class="log" id="log"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="dataH">
+    <h2 id="dataH">Back up your data</h2>
+    <p class="meta" style="margin:0">Sessions are saved in this browser only. Export a CSV file to keep a backup or open it in Excel or Google Sheets.</p>
+    <div class="row">
+      <button id="exportBtn">Export CSV</button>
+      <button id="copyBtn">Copy CSV</button>
+      <label class="filebtn" for="importFile">Import CSV</label>
+      <input type="file" id="importFile" accept=".csv,text/csv" hidden>
+    </div>
+    <p class="meta" id="dataMsg" role="status" style="margin:0"></p>
   </section>
 </div>
 
@@ -204,25 +223,120 @@ function addSession(subject, mins, date) {
   save(); render();
 }
 
-// timer
-let startAt = null, elapsed = 0, tick = null;
+// timer: stopwatch counts up; Pomodoro counts down 25 min focus, then a 5 min break (15 min after every 4th round)
+const FOCUS = 25, SHORT = 5, LONG = 15;
+let startAt = null, elapsed = 0, tick = null, mode = 'stopwatch', phase = 'focus', rounds = 0;
 const total = () => elapsed + (startAt ? Date.now() - startAt : 0);
-function showClock() { const s = Math.floor(total()/1000); $('clock').textContent = (s>=3600? Math.floor(s/3600)+':' : '') + pad(Math.floor(s/60)%60) + ':' + pad(s%60) }
+const phaseMs = () => (phase === 'focus' ? FOCUS : (rounds % 4 === 0 ? LONG : SHORT)) * 60000;
+const fmt = ms => { const s = Math.max(0, Math.ceil(ms/1000)); return (s>=3600? Math.floor(s/3600)+':' : '') + pad(Math.floor(s/60)%60) + ':' + pad(s%60) };
+function showClock() {
+  if (mode === 'pomo') {
+    const left = phaseMs() - total();
+    $('clock').textContent = fmt(left);
+    if (startAt && left <= 0) phaseDone();
+  } else $('clock').textContent = fmt(total());
+  $('pomoInfo').hidden = mode !== 'pomo';
+  $('phase').textContent = phase === 'focus' ? 'Focus' : (rounds % 4 === 0 ? 'Long break' : 'Break');
+  $('phase').classList.toggle('break', phase !== 'focus');
+  $('round').textContent = `Round ${rounds % 4 + (phase === 'focus' ? 1 : 0) || 4} of 4 · ${rounds} done`;
+}
+function run() { startAt = Date.now(); clearInterval(tick); tick = setInterval(showClock, 250); $('startBtn').textContent = 'Pause'; $('stopBtn').disabled = false }
+function phaseDone() {
+  clearInterval(tick); startAt = null; elapsed = 0; beep();
+  if (phase === 'focus') {
+    rounds++;
+    addSession($('subject').value, FOCUS, dayKey(new Date()));
+    phase = 'break';
+    $('timerMsg').textContent = `Saved ${FOCUS} min of ${$('subject').value}. Break time.`;
+    run();
+  } else {
+    phase = 'focus';
+    $('timerMsg').textContent = 'Break over. Press Start for the next focus round.';
+    $('startBtn').textContent = 'Start';
+  }
+  showClock();
+}
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, .3, .6].forEach(t => { const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = 880; g.gain.setValueAtTime(.2, ctx.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + t + .25);
+      o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + .25) });
+  } catch(e) {}
+}
 $('startBtn').onclick = () => {
   if (!state.subjects.length) { $('timerMsg').textContent = 'Add a subject first.'; return }
   if (startAt) { elapsed += Date.now() - startAt; startAt = null; clearInterval(tick); $('startBtn').textContent = 'Resume' }
-  else { startAt = Date.now(); tick = setInterval(showClock, 250); $('startBtn').textContent = 'Pause' }
-  $('stopBtn').disabled = false; $('timerMsg').textContent = '';
+  else { run(); $('timerMsg').textContent = '' }
 };
 $('stopBtn').onclick = () => {
-  const mins = Math.round(total()/60000);
+  const mins = Math.round(total()/60000), onBreak = mode === 'pomo' && phase !== 'focus';
   resetTimer();
+  if (onBreak) { $('timerMsg').textContent = 'Break ended early.'; return }
   if (mins < 1) { $('timerMsg').textContent = 'Session was under a minute, so it was not saved.'; return }
   addSession($('subject').value, mins, dayKey(new Date()));
   $('timerMsg').textContent = `Saved ${mins} min of ${$('subject').value}.`;
 };
-function resetTimer() { clearInterval(tick); startAt = null; elapsed = 0; showClock(); $('startBtn').textContent = 'Start'; $('stopBtn').disabled = true }
-$('resetBtn').onclick = () => { resetTimer(); $('timerMsg').textContent = '' };
+function resetTimer() { clearInterval(tick); startAt = null; elapsed = 0; phase = 'focus'; $('startBtn').textContent = 'Start'; $('stopBtn').disabled = true; showClock() }
+$('resetBtn').onclick = () => { rounds = 0; resetTimer(); $('timerMsg').textContent = '' };
+$('mode').onchange = () => { mode = $('mode').value; rounds = 0; resetTimer(); $('timerMsg').textContent = '';
+  try { localStorage.setItem(KEY + '-mode', mode) } catch(e) {} };
+try { const m = localStorage.getItem(KEY + '-mode'); if (m === 'pomo') { mode = m; $('mode').value = m } } catch(e) {}
+
+// CSV export / import
+const csvCell = v => /[",\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+function toCSV() {
+  const rows = [...state.sessions].sort((a,b) => a.date.localeCompare(b.date)).map(s => [s.date, s.subject, s.mins].map(csvCell).join(','));
+  return ['date,subject,minutes', ...rows].join('\n');
+}
+function parseCSV(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i+1] === '"') { cell += '"'; i++ } else if (c === '"') q = false; else cell += c }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = '' }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i+1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = '' }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row) }
+  return rows;
+}
+$('exportBtn').onclick = () => {
+  if (!state.sessions.length) { $('dataMsg').textContent = 'There are no sessions to export yet.'; return }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([toCSV()], { type: 'text/csv' }));
+  a.download = `study-sessions-${dayKey(new Date())}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  $('dataMsg').textContent = `Exported ${state.sessions.length} sessions. If no file appeared, use Copy CSV and paste it into a spreadsheet.`;
+};
+$('copyBtn').onclick = () => {
+  const csv = toCSV();
+  navigator.clipboard.writeText(csv).then(() => $('dataMsg').textContent = 'Copied. Paste it into Excel, Google Sheets or a text file.',
+    () => $('dataMsg').textContent = 'Your browser blocked copying. Use Export CSV instead.');
+};
+$('importFile').onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  file.text().then(text => {
+    const rows = parseCSV(text.trim()).filter(r => r.length >= 3);
+    if (rows.length && rows[0][0].toLowerCase() === 'date') rows.shift();
+    const good = rows.filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r[0].trim()) && r[1].trim() && parseInt(r[2],10) > 0);
+    if (!good.length) { $('dataMsg').textContent = 'No sessions found. The file needs date, subject and minutes columns, with dates like 2026-11-04.'; return }
+    if (state.sessions.some(s => s.example)) { state.sessions = state.sessions.filter(s => !s.example); state.subjects = [] }
+    const seen = new Set(state.sessions.map(s => `${s.date}|${s.subject}|${s.mins}`));
+    let added = 0;
+    good.forEach(([d, sub, m], i) => {
+      d = d.trim(); sub = sub.trim(); m = parseInt(m, 10);
+      if (!state.subjects.some(s => s.name.toLowerCase() === sub.toLowerCase())) state.subjects.push({ name: sub, color: COLORS[state.subjects.length % COLORS.length] });
+      const name = state.subjects.find(s => s.name.toLowerCase() === sub.toLowerCase()).name, k = `${d}|${name}|${m}`;
+      if (seen.has(k)) return; seen.add(k);
+      state.sessions.push({ id: Date.now().toString(36) + i, subject: name, mins: m, date: d }); added++;
+    });
+    save(); render();
+    $('dataMsg').textContent = `Imported ${added} sessions` + (good.length > added ? ` (skipped ${good.length - added} you already had).` : '.');
+  });
+  e.target.value = '';
+};
 
 // forms & actions
 $('mDate').value = dayKey(new Date());
@@ -238,7 +352,7 @@ document.addEventListener('click', e => {
   if (del) { state.sessions = state.sessions.filter(s => s.id !== del); save(); render() }
   if (rm !== undefined) { state.subjects.splice(+rm, 1); save(); render() }
 });
-render();
+render(); showClock();
 </script>
 </body>
 </html>
