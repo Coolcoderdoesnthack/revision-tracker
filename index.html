@@ -49,7 +49,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .chart svg { width: 100%; height: auto; display: block }
 .chart text { fill: var(--muted); font: 11px var(--mono) }
 ul.log { list-style: none; margin: 0; padding: 0; display: grid }
-ul.log li { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
+ul.log li { display: grid; grid-template-columns: 10px minmax(0,1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
 ul.log li:last-child { border-bottom: 0 }
 .dot { width: 10px; height: 10px; border-radius: 50% }
 .mins { font: 500 .9rem var(--mono); font-variant-numeric: tabular-nums }
@@ -59,6 +59,21 @@ ul.log li:last-child { border-bottom: 0 }
 .chip button { padding: 0 6px; border: 0; background: none; color: var(--muted) }
 .notice { background: color-mix(in srgb, var(--hl) 30%, var(--card)); border-radius: 8px; padding: 10px 12px; font-size: .9rem }
 .empty { color: var(--muted); font-size: .9rem }
+.heat { overflow-x: auto }
+.heat svg { width: 100%; min-width: 420px; height: auto; display: block }
+.heat text { fill: var(--muted); font: 9px var(--mono) }
+.l0 { fill: var(--rule); background: var(--rule) }
+.l1 { fill: color-mix(in srgb, var(--accent) 30%, var(--card)); background: color-mix(in srgb, var(--accent) 30%, var(--card)) }
+.l2 { fill: color-mix(in srgb, var(--accent) 55%, var(--card)); background: color-mix(in srgb, var(--accent) 55%, var(--card)) }
+.l3 { fill: color-mix(in srgb, var(--accent) 80%, var(--card)); background: color-mix(in srgb, var(--accent) 80%, var(--card)) }
+.l4 { fill: var(--accent); background: var(--accent) }
+.heat rect.today { stroke: var(--hl); stroke-width: 1.5 }
+.legend { display: flex; align-items: center; gap: 3px; font-size: .75rem; color: var(--muted) }
+.legend i { width: 11px; height: 11px; border-radius: 2px; display: inline-block }
+.note { font-size: .85rem; color: var(--ink); margin-top: 2px; overflow-wrap: anywhere }
+.noteEdit { grid-column: 2 / -1; display: flex; gap: 8px }
+.noteEdit input { flex: 1 }
+#note { width: 100% }
 .phase { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-ink) }
 .phase.break { background: var(--hl); color: #18212d }
 .filebtn { font-weight: 700; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper) }
@@ -71,13 +86,8 @@ ul.log li:last-child { border-bottom: 0 }
 <div class="wrap">
   <header>
     <h1>Revision <mark>Tracker</mark></h1>
-    <p class="sub">Time your study sessions, keep a streak, and see your week at a glance.</p>
+    <p class="sub">Time your study sessions, keep a streak, and see how your revision builds up over the months.</p>
   </header>
-
-  <div class="notice" id="exampleNote" hidden>
-    These are example sessions so you can see how it works.
-    <button class="link" id="clearExamples">Clear examples</button>
-  </div>
 
   <section class="panel" aria-labelledby="timerH">
     <div class="row between">
@@ -89,6 +99,7 @@ ul.log li:last-child { border-bottom: 0 }
     </div>
     <div class="row" id="pomoInfo" hidden><span class="phase" id="phase">Focus</span><span class="meta" id="round">Round 1 of 4</span></div>
     <div class="clock" id="clock" aria-live="off">00:00</div>
+    <input id="note" placeholder="Note (optional), e.g. Chapter 4 practice questions" aria-label="Session note" maxlength="200">
     <div class="row">
       <button class="primary" id="startBtn">Start</button>
       <button id="stopBtn" disabled>Stop &amp; save</button>
@@ -110,12 +121,25 @@ ul.log li:last-child { border-bottom: 0 }
     <div class="chart" id="chart"></div>
   </section>
 
+  <section class="panel" aria-labelledby="heatH">
+    <div class="row between">
+      <h2 id="heatH">Last 6 months</h2>
+      <span class="meta" id="heatTotal"></span>
+    </div>
+    <div class="heat" id="heat"></div>
+    <div class="row between">
+      <span class="meta" id="heatBest"></span>
+      <div class="legend" aria-hidden="true">Less <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> More</div>
+    </div>
+  </section>
+
   <section class="panel" aria-labelledby="addH">
     <h2 id="addH">Log a session by hand</h2>
     <form class="row" id="manual">
       <select id="mSubject" aria-label="Subject"></select>
       <input id="mMins" type="number" min="1" placeholder="Minutes" aria-label="Minutes" style="width:100px" required>
       <input id="mDate" type="date" aria-label="Date" required>
+      <input id="mNote" placeholder="Note (optional)" aria-label="Note" maxlength="200" style="flex:1 1 180px">
       <button class="primary" type="submit">Add</button>
     </form>
   </section>
@@ -155,13 +179,17 @@ const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate()
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
 const $ = id => document.getElementById(id);
 
-function exampleData() {
-  const subs = [{name:'Maths',color:COLORS[0]},{name:'English',color:COLORS[1]},{name:'Biology',color:COLORS[2]}];
-  const plan = [[0,'Maths',35],[1,'Biology',50],[1,'English',25],[2,'Maths',45],[3,'English',40],[4,'Biology',30],[4,'Maths',20],[5,'Maths',60]];
-  const today = new Date();
-  return { goal: 60, subjects: subs, sessions: plan.map(([ago,s,m],i) => ({ id: 'ex'+i, subject: s, mins: m, date: dayKey(addDays(today,-ago)), example: true })) };
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(KEY)) } catch(e) {}
+  if (!s || !s.subjects) return { goal: 60, subjects: [], sessions: [] };
+  // remove the example sessions older versions started with
+  if (s.sessions.some(x => x.example)) {
+    s.sessions = s.sessions.filter(x => !x.example);
+    s.subjects = s.subjects.filter(sub => !['Maths','English','Biology'].includes(sub.name) || s.sessions.some(x => x.subject === sub.name));
+  }
+  return s;
 }
-function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.subjects) return s } catch(e) {} return exampleData() }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)) } catch(e) {} }
 let state = load();
 
@@ -189,14 +217,17 @@ function render() {
   $('streak').textContent = streak;
 
   drawChart(now);
+  drawHeat(now);
 
   // log
   const list = [...state.sessions].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 15);
   $('log').innerHTML = list.length ? list.map(s => `<li><span class="dot" style="background:${subColor(s.subject)}"></span>
-    <span>${esc(s.subject)}<br><span class="meta">${fmtDate(s.date)}</span></span>
-    <span class="mins">${s.mins} min</span><button class="link" data-del="${s.id}" aria-label="Delete session">Delete</button></li>`).join('')
-    : '<li class="empty" style="display:block">No sessions yet. Start the timer to log your first one.</li>';
-  $('exampleNote').hidden = !state.sessions.some(s => s.example);
+    <span>${esc(s.subject)} <span class="meta">· ${fmtDate(s.date)}</span>${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}</span>
+    <span class="mins">${s.mins} min</span>
+    <span><button class="link" data-note="${s.id}">${s.note ? 'Edit note' : 'Add note'}</button><button class="link" data-del="${s.id}" aria-label="Delete session">Delete</button></span>
+    ${editing === s.id ? `<form class="noteEdit" data-save="${s.id}"><input id="edit-${s.id}" value="${esc(s.note || '')}" maxlength="200" aria-label="Note" placeholder="What did you work on?"><button class="primary" type="submit">Save</button></form>` : ''}</li>`).join('')
+    : '<li class="empty" style="display:block">No sessions yet. Add a subject, then start the timer to log your first one.</li>';
+  if (editing) { const el = $('edit-' + editing); if (el) el.focus() }
 }
 
 function drawChart(now) {
@@ -216,10 +247,39 @@ function drawChart(now) {
   $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Minutes studied each day for the last 7 days; dashed line is your daily goal">${g}</svg>`;
 }
 
+function drawHeat(now) {
+  const WEEKS = 26, C = 11, G = 3, L = 26, T = 16;
+  const mon = addDays(now, -((now.getDay() + 6) % 7));       // Monday of this week
+  const start = addDays(mon, -(WEEKS - 1) * 7);
+  const lvl = v => !v ? 0 : v < state.goal / 2 ? 1 : v < state.goal ? 2 : v < state.goal * 1.5 ? 3 : 4;
+  const tKey = dayKey(now);
+  let g = '', total = 0, best = null, days = 0;
+  ['Mon','','Wed','','Fri','',''].forEach((n,r) => { if (n) g += `<text x="0" y="${T + r*(C+G) + 9}">${n}</text>` });
+  for (let w = 0; w < WEEKS; w++) {
+    const wStart = addDays(start, w*7);
+    for (let r = 0; r < 7; r++) {
+      const d = addDays(wStart, r);
+      if (d.getDate() === 1 || (w === 0 && r === 0)) g += `<text x="${L + w*(C+G)}" y="10">${d.toLocaleDateString('en-GB',{month:'short'})}</text>`;
+      if (d > now) continue;
+      const k = dayKey(d), v = minsOn(k);
+      total += v; if (v) days++;
+      if (v && (!best || v > best.v)) best = { v, k };
+      g += `<rect class="l${lvl(v)}${k === tKey ? ' today' : ''}" x="${L + w*(C+G)}" y="${T + r*(C+G)}" width="${C}" height="${C}" rx="2"><title>${fmtDate(k)}: ${v ? v + ' min' : 'no study'}</title></rect>`;
+    }
+  }
+  const W = L + WEEKS*(C+G), H = T + 7*(C+G);
+  $('heat').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Study minutes per day over the last 6 months, darker squares mean more study">${g}</svg>`;
+  $('heatTotal').textContent = `${(total/60).toFixed(1)}h over ${days} day${days === 1 ? '' : 's'}`;
+  $('heatBest').textContent = best ? `Best day: ${fmtDate(best.k)}, ${best.v} min` : 'Each square is one day. It fills in as you study.';
+}
+
+let editing = null;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtDate = k => new Date(k+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-function addSession(subject, mins, date) {
-  state.sessions.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), subject, mins, date });
+function addSession(subject, mins, date, note) {
+  const s = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), subject, mins, date };
+  if (note && note.trim()) s.note = note.trim().slice(0, 200);
+  state.sessions.push(s);
   save(); render();
 }
 
@@ -245,7 +305,7 @@ function phaseDone() {
   clearInterval(tick); startAt = null; elapsed = 0; beep();
   if (phase === 'focus') {
     rounds++;
-    addSession($('subject').value, FOCUS, dayKey(new Date()));
+    addSession($('subject').value, FOCUS, dayKey(new Date()), $('note').value);
     phase = 'break';
     $('timerMsg').textContent = `Saved ${FOCUS} min of ${$('subject').value}. Break time.`;
     run();
@@ -274,7 +334,8 @@ $('stopBtn').onclick = () => {
   resetTimer();
   if (onBreak) { $('timerMsg').textContent = 'Break ended early.'; return }
   if (mins < 1) { $('timerMsg').textContent = 'Session was under a minute, so it was not saved.'; return }
-  addSession($('subject').value, mins, dayKey(new Date()));
+  addSession($('subject').value, mins, dayKey(new Date()), $('note').value);
+  $('note').value = '';
   $('timerMsg').textContent = `Saved ${mins} min of ${$('subject').value}.`;
 };
 function resetTimer() { clearInterval(tick); startAt = null; elapsed = 0; phase = 'focus'; $('startBtn').textContent = 'Start'; $('stopBtn').disabled = true; showClock() }
@@ -286,8 +347,8 @@ try { const m = localStorage.getItem(KEY + '-mode'); if (m === 'pomo') { mode = 
 // CSV export / import
 const csvCell = v => /[",\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
 function toCSV() {
-  const rows = [...state.sessions].sort((a,b) => a.date.localeCompare(b.date)).map(s => [s.date, s.subject, s.mins].map(csvCell).join(','));
-  return ['date,subject,minutes', ...rows].join('\n');
+  const rows = [...state.sessions].sort((a,b) => a.date.localeCompare(b.date)).map(s => [s.date, s.subject, s.mins, s.note || ''].map(csvCell).join(','));
+  return ['date,subject,minutes,note', ...rows].join('\n');
 }
 function parseCSV(text) {
   const rows = []; let row = [], cell = '', q = false;
@@ -321,16 +382,17 @@ $('importFile').onchange = e => {
     const rows = parseCSV(text.trim()).filter(r => r.length >= 3);
     if (rows.length && rows[0][0].toLowerCase() === 'date') rows.shift();
     const good = rows.filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r[0].trim()) && r[1].trim() && parseInt(r[2],10) > 0);
-    if (!good.length) { $('dataMsg').textContent = 'No sessions found. The file needs date, subject and minutes columns, with dates like 2026-11-04.'; return }
-    if (state.sessions.some(s => s.example)) { state.sessions = state.sessions.filter(s => !s.example); state.subjects = [] }
+    if (!good.length) { $('dataMsg').textContent = 'No sessions found. The file needs date, subject and minutes columns (note is optional), with dates like 2026-11-04.'; return }
     const seen = new Set(state.sessions.map(s => `${s.date}|${s.subject}|${s.mins}`));
     let added = 0;
-    good.forEach(([d, sub, m], i) => {
+    good.forEach(([d, sub, m, note], i) => {
       d = d.trim(); sub = sub.trim(); m = parseInt(m, 10);
       if (!state.subjects.some(s => s.name.toLowerCase() === sub.toLowerCase())) state.subjects.push({ name: sub, color: COLORS[state.subjects.length % COLORS.length] });
       const name = state.subjects.find(s => s.name.toLowerCase() === sub.toLowerCase()).name, k = `${d}|${name}|${m}`;
       if (seen.has(k)) return; seen.add(k);
-      state.sessions.push({ id: Date.now().toString(36) + i, subject: name, mins: m, date: d }); added++;
+      const row = { id: Date.now().toString(36) + i, subject: name, mins: m, date: d };
+      if (note && note.trim()) row.note = note.trim().slice(0, 200);
+      state.sessions.push(row); added++;
     });
     save(); render();
     $('dataMsg').textContent = `Imported ${added} sessions` + (good.length > added ? ` (skipped ${good.length - added} you already had).` : '.');
@@ -341,16 +403,23 @@ $('importFile').onchange = e => {
 // forms & actions
 $('mDate').value = dayKey(new Date());
 $('manual').onsubmit = e => { e.preventDefault(); const m = parseInt($('mMins').value,10);
-  if (!state.subjects.length || !(m > 0)) return; addSession($('mSubject').value, m, $('mDate').value); $('mMins').value = '' };
+  if (!state.subjects.length || !(m > 0)) return; addSession($('mSubject').value, m, $('mDate').value, $('mNote').value); $('mMins').value = ''; $('mNote').value = '' };
 $('addSubject').onsubmit = e => { e.preventDefault(); const n = $('newSub').value.trim();
   if (!n || state.subjects.some(s => s.name.toLowerCase() === n.toLowerCase())) return;
   state.subjects.push({ name: n, color: COLORS[state.subjects.length % COLORS.length] }); $('newSub').value = ''; save(); render() };
 $('goal').onchange = () => { const g = parseInt($('goal').value,10); if (g > 0) { state.goal = g; save(); render() } };
-$('clearExamples').onclick = () => { state = { goal: state.goal, subjects: [], sessions: [] }; save(); render() };
 document.addEventListener('click', e => {
-  const del = e.target.dataset.del, rm = e.target.dataset.rm;
+  const del = e.target.dataset.del, rm = e.target.dataset.rm, nt = e.target.dataset.note;
+  if (nt) { editing = editing === nt ? null : nt; render() }
   if (del) { state.sessions = state.sessions.filter(s => s.id !== del); save(); render() }
   if (rm !== undefined) { state.subjects.splice(+rm, 1); save(); render() }
+});
+document.addEventListener('submit', e => {
+  const id = e.target.dataset.save; if (!id) return;
+  e.preventDefault();
+  const s = state.sessions.find(x => x.id === id), v = $('edit-' + id).value.trim();
+  if (s) { if (v) s.note = v.slice(0, 200); else delete s.note }
+  editing = null; save(); render();
 });
 render(); showClock();
 </script>

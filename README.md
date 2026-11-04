@@ -9,10 +9,12 @@ A simple study tracker that runs entirely in your browser. No sign-up, no server
 - Daily goal with a dashed goal line on the chart
 - Day streak and weekly hours
 - 7-day bar chart
+- 6-month heatmap of study days, like GitHub's contribution graph
+- Notes on each session (add them while timing, when logging by hand, or later)
 - Manual logging for sessions you forgot to time
 - Light and dark mode
 - Data saved in your browser (localStorage)
-- CSV export, copy and import, so you can back up your sessions or open them in Excel / Google Sheets
+- CSV export, copy and import (including notes), so you can back up your sessions or open them in Excel / Google Sheets
 
 ## Run it
 Open `index.html` in any browser. That's it.
@@ -24,7 +26,7 @@ Open `index.html` in any browser. That's it.
 4. After a minute your tracker is live at `https://<your-username>.github.io/<repo-name>/`.
 
 ## Ideas for next versions
-- Monthly heatmap like GitHub's contribution graph
-- Notes on each session
+- Subject breakdown pie chart
+- Exam countdowns
 
 Built with plain HTML, CSS and JavaScript.
