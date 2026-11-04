@@ -7,24 +7,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: one narrow column like an exercise book — timer on top, then week chart, then the log. */
+/* Layout: one narrow column like an exercise book — timer and exams on top, then progress, then records. */
 :root {
   --paper: #f4f6f8; --card: #ffffff; --ink: #18212d; --muted: #5d6b7c; --rule: #dbe1e8;
-  --accent: #2457a6; --accent-ink: #ffffff; --hl: #f6d365; --danger: #b3261e;
+  --accent: #2457a6; --accent-ink: #ffffff; --hl: #f6d365; --hl-ink: #18212d; --danger: #b3261e;
   --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --paper: #10151c; --card: #18202a; --ink: #e8edf3; --muted: #9aa8b8; --rule: #2a3542;
-  --accent: #7fa8ec; --accent-ink: #0d1520; --hl: #e2b93b; --danger: #ff8a80; color-scheme: dark } }
+  --accent: #7fa8ec; --accent-ink: #0d1520; --hl: #e2b93b; --hl-ink: #18212d; --danger: #ff8a80; color-scheme: dark } }
 :root[data-theme="dark"] {
   --paper: #10151c; --card: #18202a; --ink: #e8edf3; --muted: #9aa8b8; --rule: #2a3542;
-  --accent: #7fa8ec; --accent-ink: #0d1520; --hl: #e2b93b; --danger: #ff8a80; color-scheme: dark }
+  --accent: #7fa8ec; --accent-ink: #0d1520; --hl: #e2b93b; --hl-ink: #18212d; --danger: #ff8a80; color-scheme: dark }
 
 * { box-sizing: border-box }
+[hidden] { display: none !important }
 body { background: var(--paper); color: var(--ink); font: 16px/1.5 var(--body);
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px }
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 96px }
 .wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 20px }
 h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance }
 h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em }
@@ -36,32 +37,45 @@ h2 { font-size: 1.05rem; font-weight: 600 }
 .between { justify-content: space-between }
 label.lbl { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700 }
 input, select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; min-width: 0 }
-button { font: inherit; font-weight: 700; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper); color: var(--ink) }
+button, .filebtn { font: inherit; font-weight: 700; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper); color: var(--ink) }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
 button.link { background: none; border: 0; padding: 4px; color: var(--muted); font-weight: 400; text-decoration: underline }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--hl); outline-offset: 2px }
+button:disabled { opacity: .5; cursor: default }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, .filebtn:focus-within { outline: 3px solid var(--hl); outline-offset: 2px }
+.meta { font-size: .8rem; color: var(--muted) }
+.empty { color: var(--muted); font-size: .9rem; margin: 0 }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none }
+kbd { font: .75rem var(--mono); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px }
+
+/* timer */
 .clock { font: 700 clamp(2.6rem, 12vw, 3.6rem)/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px }
-.stat { border-top: 3px solid var(--rule); padding-top: 8px }
-.stat b { display: block; font: 700 1.5rem var(--mono); font-variant-numeric: tabular-nums }
+.phase { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-ink) }
+.phase.break { background: var(--hl); color: var(--hl-ink) }
+#note { width: 100% }
+details summary { cursor: pointer; color: var(--muted); font-size: .85rem }
+details .row { margin-top: 10px }
+details input { width: 70px }
+
+/* exams */
+ul.plain { list-style: none; margin: 0; padding: 0; display: grid }
+.exam { display: grid; grid-template-columns: 4.5rem minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
+.exam:last-child { border-bottom: 0 }
+.exam .days { font: 700 1.6rem/1 var(--mono); font-variant-numeric: tabular-nums; text-align: center }
+.exam .days small { display: block; font: 400 .7rem var(--body); color: var(--muted); margin-top: 3px }
+.exam.soon .days { background: linear-gradient(transparent 50%, var(--hl) 50%); color: var(--ink) }
+.exam.past { opacity: .55 }
+
+/* stats + charts */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px }
+.stat { border-top: 3px solid var(--rule); padding-top: 8px; min-width: 0 }
+.stat b { display: block; font: 700 1.4rem var(--mono); font-variant-numeric: tabular-nums }
 .stat span { font-size: .8rem; color: var(--muted) }
 .stat.on { border-top-color: var(--hl) }
 .chart svg { width: 100%; height: auto; display: block }
-.chart text { fill: var(--muted); font: 11px var(--mono) }
-ul.log { list-style: none; margin: 0; padding: 0; display: grid }
-ul.log li { display: grid; grid-template-columns: 10px minmax(0,1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
-ul.log li:last-child { border-bottom: 0 }
-.dot { width: 10px; height: 10px; border-radius: 50% }
-.mins { font: 500 .9rem var(--mono); font-variant-numeric: tabular-nums }
-.meta { font-size: .8rem; color: var(--muted) }
-.chips { display: flex; flex-wrap: wrap; gap: 6px }
-.chip { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; border: 1px solid var(--rule); border-radius: 999px; padding: 3px 4px 3px 10px }
-.chip button { padding: 0 6px; border: 0; background: none; color: var(--muted) }
-.notice { background: color-mix(in srgb, var(--hl) 30%, var(--card)); border-radius: 8px; padding: 10px 12px; font-size: .9rem }
-.empty { color: var(--muted); font-size: .9rem }
+.chart text, .heat text { fill: var(--muted); font: 11px var(--mono) }
 .heat { overflow-x: auto }
-.heat svg { width: 100%; min-width: 420px; height: auto; display: block }
-.heat text { fill: var(--muted); font: 9px var(--mono) }
+.heat svg { width: 100%; min-width: 380px; height: auto; display: block }
+.heat text { font-size: 9px }
 .l0 { fill: var(--rule); background: var(--rule) }
 .l1 { fill: color-mix(in srgb, var(--accent) 30%, var(--card)); background: color-mix(in srgb, var(--accent) 30%, var(--card)) }
 .l2 { fill: color-mix(in srgb, var(--accent) 55%, var(--card)); background: color-mix(in srgb, var(--accent) 55%, var(--card)) }
@@ -70,14 +84,34 @@ ul.log li:last-child { border-bottom: 0 }
 .heat rect.today { stroke: var(--hl); stroke-width: 1.5 }
 .legend { display: flex; align-items: center; gap: 3px; font-size: .75rem; color: var(--muted) }
 .legend i { width: 11px; height: 11px; border-radius: 2px; display: inline-block }
-.note { font-size: .85rem; color: var(--ink); margin-top: 2px; overflow-wrap: anywhere }
+
+/* subjects */
+.subj { display: grid; grid-template-columns: 10px minmax(5rem, 9rem) minmax(0,1fr) 4.5rem auto; gap: 10px; align-items: center; padding: 6px 0 }
+.subj .name { overflow-wrap: anywhere }
+.bar { height: 10px; background: var(--rule); border-radius: 5px; overflow: hidden }
+.bar i { display: block; height: 100% }
+.subj .mins { text-align: right }
+
+/* log */
+.mins { font: 500 .9rem var(--mono); font-variant-numeric: tabular-nums }
+ul.log li { display: grid; grid-template-columns: 10px minmax(0,1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
+ul.log li:last-child { border-bottom: 0 }
+.note { font-size: .85rem; margin-top: 2px; overflow-wrap: anywhere }
 .noteEdit { grid-column: 2 / -1; display: flex; gap: 8px }
 .noteEdit input { flex: 1 }
-#note { width: 100% }
-.phase { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-ink) }
-.phase.break { background: var(--hl); color: #18212d }
-.filebtn { font-weight: 700; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper) }
-@media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr 1fr } .stat b { font-size: 1.2rem } }
+
+/* undo toast */
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper);
+  border-radius: 10px; padding: 8px 8px 8px 16px; display: flex; gap: 12px; align-items: center; box-shadow: 0 6px 24px rgb(0 0 0 / .25); max-width: calc(100% - 32px); z-index: 5 }
+.toast button { background: var(--hl); color: var(--hl-ink); border: 0; padding: 6px 12px }
+
+@media (max-width: 480px) {
+  .stats { grid-template-columns: 1fr 1fr }
+  .subj { grid-template-columns: 10px minmax(0,1fr) 4rem auto; }
+  .subj .bar { grid-column: 2 / -1; grid-row: 2 }
+  ul.log li { grid-template-columns: 10px minmax(0,1fr) auto }
+  ul.log li .acts { grid-column: 2 / -1 }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important } }
 </style>
 </head>
@@ -86,26 +120,46 @@ ul.log li:last-child { border-bottom: 0 }
 <div class="wrap">
   <header>
     <h1>Revision <mark>Tracker</mark></h1>
-    <p class="sub">Time your study sessions, keep a streak, and see how your revision builds up over the months.</p>
+    <p class="sub">Time your study, count down to exams, and watch your revision build up over the months.</p>
   </header>
 
   <section class="panel" aria-labelledby="timerH">
     <div class="row between">
       <h2 id="timerH">Study timer</h2>
       <div class="row">
-        <select id="mode" aria-label="Timer mode"><option value="stopwatch">Stopwatch</option><option value="pomo">Pomodoro 25 / 5</option></select>
+        <select id="mode" aria-label="Timer mode"><option value="stopwatch">Stopwatch</option><option value="pomo">Pomodoro</option></select>
         <select id="subject" aria-label="Subject"></select>
       </div>
     </div>
-    <div class="row" id="pomoInfo" hidden><span class="phase" id="phase">Focus</span><span class="meta" id="round">Round 1 of 4</span></div>
+    <div class="row" id="pomoInfo" hidden><span class="phase" id="phase">Focus</span><span class="meta" id="round"></span></div>
     <div class="clock" id="clock" aria-live="off">00:00</div>
     <input id="note" placeholder="Note (optional), e.g. Chapter 4 practice questions" aria-label="Session note" maxlength="200">
     <div class="row">
       <button class="primary" id="startBtn">Start</button>
       <button id="stopBtn" disabled>Stop &amp; save</button>
       <button class="link" id="resetBtn">Reset</button>
+      <span class="meta">or press <kbd>Space</kbd></span>
     </div>
-    <p class="meta" id="timerMsg" role="status"></p>
+    <p class="meta" id="timerMsg" role="status" style="margin:0"></p>
+    <details id="pomoSettings">
+      <summary>Pomodoro lengths</summary>
+      <div class="row">
+        <label class="lbl" for="pFocus">Focus</label><input id="pFocus" type="number" min="1" max="180">
+        <label class="lbl" for="pShort">Break</label><input id="pShort" type="number" min="1" max="60">
+        <label class="lbl" for="pLong">Long break</label><input id="pLong" type="number" min="1" max="90">
+        <span class="meta">minutes · long break after every 4th round</span>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel" aria-labelledby="examH">
+    <h2 id="examH">Exam countdown</h2>
+    <ul class="plain" id="exams"></ul>
+    <form class="row" id="addExam">
+      <input id="eName" placeholder="Exam, e.g. Maths Paper 1" aria-label="Exam name" maxlength="80" required style="flex:1 1 180px">
+      <input id="eDate" type="date" aria-label="Exam date" required>
+      <button type="submit">Add exam</button>
+    </form>
   </section>
 
   <section class="panel" aria-labelledby="statsH">
@@ -115,8 +169,9 @@ ul.log li:last-child { border-bottom: 0 }
     </div>
     <div class="stats">
       <div class="stat" id="todayStat"><b id="today">0</b><span>min today</span></div>
-      <div class="stat"><b id="week">0h</b><span>this week</span></div>
+      <div class="stat"><b id="week">0h</b><span>last 7 days</span></div>
       <div class="stat"><b id="streak">0</b><span>day streak</span></div>
+      <div class="stat"><b id="bestStreak">0</b><span>best streak</span></div>
     </div>
     <div class="chart" id="chart"></div>
   </section>
@@ -133,6 +188,18 @@ ul.log li:last-child { border-bottom: 0 }
     </div>
   </section>
 
+  <section class="panel" aria-labelledby="subH">
+    <div class="row between">
+      <h2 id="subH">Subjects</h2>
+      <span class="meta">time in the last 30 days</span>
+    </div>
+    <div id="subjects"></div>
+    <form class="row" id="addSubject">
+      <input id="newSub" placeholder="New subject, e.g. Physics" aria-label="New subject" maxlength="40" required>
+      <button type="submit">Add subject</button>
+    </form>
+  </section>
+
   <section class="panel" aria-labelledby="addH">
     <h2 id="addH">Log a session by hand</h2>
     <form class="row" id="manual">
@@ -144,18 +211,13 @@ ul.log li:last-child { border-bottom: 0 }
     </form>
   </section>
 
-  <section class="panel" aria-labelledby="subH">
-    <h2 id="subH">Subjects</h2>
-    <div class="chips" id="chips"></div>
-    <form class="row" id="addSubject">
-      <input id="newSub" placeholder="New subject, e.g. Physics" aria-label="New subject" required>
-      <button type="submit">Add subject</button>
-    </form>
-  </section>
-
   <section class="panel" aria-labelledby="logH">
-    <h2 id="logH">Recent sessions</h2>
+    <div class="row between">
+      <h2 id="logH">Sessions</h2>
+      <select id="filter" aria-label="Show sessions for"></select>
+    </div>
     <ul class="log" id="log"></ul>
+    <button id="moreBtn" hidden>Show more</button>
   </section>
 
   <section class="panel" aria-labelledby="dataH">
@@ -171,95 +233,159 @@ ul.log li:last-child { border-bottom: 0 }
   </section>
 </div>
 
+<div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button id="undoBtn">Undo</button></div>
+
 <script>
 const KEY = 'revision-tracker-v1';
 const COLORS = ['#2457a6','#c2410c','#15803d','#9333ea','#0e7490','#be185d','#a16207'];
 const pad = n => String(n).padStart(2, '0');
 const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
+const daysBetween = (a, b) => Math.round((new Date(b + 'T12:00') - new Date(a + 'T12:00')) / 86400000);
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate = k => new Date(k + 'T12:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch(e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch(e) {} } };
 
+// ---------- data ----------
 function load() {
-  let s = null;
-  try { s = JSON.parse(localStorage.getItem(KEY)) } catch(e) {}
-  if (!s || !s.subjects) return { goal: 60, subjects: [], sessions: [] };
-  // remove the example sessions older versions started with
-  if (s.sessions.some(x => x.example)) {
+  const s = store.get(KEY);
+  if (!s || !s.subjects) return fill({});
+  if (s.sessions.some(x => x.example)) {   // remove example sessions from the first version
     s.sessions = s.sessions.filter(x => !x.example);
     s.subjects = s.subjects.filter(sub => !['Maths','English','Biology'].includes(sub.name) || s.sessions.some(x => x.subject === sub.name));
   }
-  return s;
+  return fill(s);
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)) } catch(e) {} }
+function fill(s) {
+  return { goal: s.goal || 60, subjects: s.subjects || [], sessions: s.sessions || [], exams: s.exams || [],
+    pomo: Object.assign({ focus: 25, short: 5, long: 15 }, s.pomo) };
+}
 let state = load();
+const save = () => store.set(KEY, state);
+const subColor = name => (state.subjects.find(x => x.name === name) || {}).color || 'var(--muted)';
+let byDay = {};
+function index() { byDay = {}; state.sessions.forEach(s => byDay[s.date] = (byDay[s.date] || 0) + s.mins) }
+const minsOn = k => byDay[k] || 0;
 
-function subColor(name) { const s = state.subjects.find(x => x.name === name); return s ? s.color : 'var(--muted)' }
-function minsOn(key) { return state.sessions.filter(s => s.date === key).reduce((a,s) => a + s.mins, 0) }
+function addSession(subject, mins, date, note) {
+  const s = { id: newId(), subject, mins, date };
+  if (note && note.trim()) s.note = note.trim().slice(0, 200);
+  state.sessions.push(s); save(); render();
+}
 
+// undo for anything that deletes
+let undoSnap = null, toastTimer;
+function withUndo(msg, change) {
+  undoSnap = JSON.stringify(state); change(); save(); render();
+  $('toastMsg').textContent = msg; $('toast').hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; undoSnap = null }, 6000);
+}
+$('undoBtn').onclick = () => { if (undoSnap) { state = fill(JSON.parse(undoSnap)); save(); render() } $('toast').hidden = true; undoSnap = null };
+
+// ---------- render ----------
+let editing = null, shown = 15;
 function render() {
-  // subject pickers + chips
+  index();
+  const now = new Date(), tKey = dayKey(now);
+
   const opts = state.subjects.map(s => `<option>${esc(s.name)}</option>`).join('') || '<option value="">Add a subject first</option>';
-  for (const id of ['subject','mSubject']) { const el = $(id), v = el.value; el.innerHTML = opts; if ([...el.options].some(o=>o.value===v)) el.value = v }
-  $('chips').innerHTML = state.subjects.length ? state.subjects.map((s,i) =>
-    `<span class="chip"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<button aria-label="Remove ${esc(s.name)}" data-rm="${i}">×</button></span>`).join('')
-    : '<span class="empty">No subjects yet. Add one below.</span>';
+  for (const id of ['subject','mSubject']) { const el = $(id), v = el.value; el.innerHTML = opts; if ([...el.options].some(o => o.value === v)) el.value = v }
+  const f = $('filter'), fv = f.value;
+  f.innerHTML = '<option value="">All subjects</option>' + state.subjects.map(s => `<option>${esc(s.name)}</option>`).join('');
+  if ([...f.options].some(o => o.value === fv)) f.value = fv;
+  $('mode').options[1].textContent = `Pomodoro ${state.pomo.focus} / ${state.pomo.short}`;
+  $('pFocus').value = state.pomo.focus; $('pShort').value = state.pomo.short; $('pLong').value = state.pomo.long;
+  $('goal').value = state.goal;
 
   // stats
-  const now = new Date(), tKey = dayKey(now);
   const today = minsOn(tKey);
   $('today').textContent = today;
   $('todayStat').classList.toggle('on', today >= state.goal);
-  $('goal').value = state.goal;
-  let week = 0; for (let i = 0; i < 7; i++) week += minsOn(dayKey(addDays(now,-i)));
-  $('week').textContent = (week/60).toFixed(1) + 'h';
-  let streak = 0, d = minsOn(tKey) > 0 ? now : addDays(now,-1);
-  while (minsOn(dayKey(d)) > 0) { streak++; d = addDays(d,-1) }
+  let week = 0; for (let i = 0; i < 7; i++) week += minsOn(dayKey(addDays(now, -i)));
+  $('week').textContent = (week / 60).toFixed(1) + 'h';
+  let streak = 0, d = today > 0 ? now : addDays(now, -1);
+  while (minsOn(dayKey(d)) > 0) { streak++; d = addDays(d, -1) }
   $('streak').textContent = streak;
+  const days = Object.keys(byDay).filter(k => byDay[k] > 0).sort();
+  let best = 0, run = 0;
+  days.forEach((k, i) => { run = i && daysBetween(days[i-1], k) === 1 ? run + 1 : 1; best = Math.max(best, run) });
+  $('bestStreak').textContent = best;
 
-  drawChart(now);
-  drawHeat(now);
+  drawChart(now); drawHeat(now); renderExams(tKey); renderSubjects(now); renderLog();
+}
 
-  // log
-  const list = [...state.sessions].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 15);
+function renderExams(tKey) {
+  const list = [...state.exams].sort((a, b) => a.date.localeCompare(b.date));
+  $('exams').innerHTML = list.length ? list.map(e => {
+    const n = daysBetween(tKey, e.date);
+    const big = n < 0 ? '✓' : n === 0 ? 'Today' : n;
+    const small = n < 0 ? 'done' : n === 0 ? 'good luck' : n === 1 ? 'day' : n >= 14 ? `days · ${Math.floor(n/7)} wks` : 'days';
+    return `<li class="exam${n < 0 ? ' past' : n <= 7 ? ' soon' : ''}"><span class="days">${big}<small>${small}</small></span>
+      <span><strong>${esc(e.name)}</strong><br><span class="meta">${new Date(e.date + 'T12:00').toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}</span></span>
+      <button class="link" data-rmexam="${e.id}" aria-label="Remove ${esc(e.name)}">Remove</button></li>`;
+  }).join('') : '<li class="empty">No exams yet. Add one to see how many days you have left.</li>';
+}
+
+function renderSubjects(now) {
+  const from = dayKey(addDays(now, -29)), totals = {};
+  state.sessions.forEach(s => { if (s.date >= from) totals[s.subject] = (totals[s.subject] || 0) + s.mins });
+  const sum = Object.values(totals).reduce((a, b) => a + b, 0), max = Math.max(1, ...Object.values(totals));
+  const list = [...state.subjects].sort((a, b) => (totals[b.name] || 0) - (totals[a.name] || 0));
+  $('subjects').innerHTML = list.length ? list.map(s => {
+    const m = totals[s.name] || 0, pct = sum ? Math.round(m / sum * 100) : 0;
+    return `<div class="subj"><span class="dot" style="background:${s.color}"></span><span class="name">${esc(s.name)}</span>
+      <span class="bar"><i style="width:${m / max * 100}%;background:${s.color}"></i></span>
+      <span class="mins" title="${pct}% of your study">${m >= 60 ? (m/60).toFixed(1) + 'h' : m + 'm'}</span>
+      <button class="link" data-rmsub="${esc(s.name)}" aria-label="Remove ${esc(s.name)}">×</button></div>`;
+  }).join('') : '<p class="empty">No subjects yet. Add the ones you are revising.</p>';
+}
+
+function renderLog() {
+  const fv = $('filter').value;
+  const all = state.sessions.filter(s => !fv || s.subject === fv).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const list = all.slice(0, shown);
   $('log').innerHTML = list.length ? list.map(s => `<li><span class="dot" style="background:${subColor(s.subject)}"></span>
     <span>${esc(s.subject)} <span class="meta">· ${fmtDate(s.date)}</span>${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}</span>
     <span class="mins">${s.mins} min</span>
-    <span><button class="link" data-note="${s.id}">${s.note ? 'Edit note' : 'Add note'}</button><button class="link" data-del="${s.id}" aria-label="Delete session">Delete</button></span>
+    <span class="acts"><button class="link" data-note="${s.id}">${s.note ? 'Edit note' : 'Add note'}</button><button class="link" data-del="${s.id}" aria-label="Delete session">Delete</button></span>
     ${editing === s.id ? `<form class="noteEdit" data-save="${s.id}"><input id="edit-${s.id}" value="${esc(s.note || '')}" maxlength="200" aria-label="Note" placeholder="What did you work on?"><button class="primary" type="submit">Save</button></form>` : ''}</li>`).join('')
-    : '<li class="empty" style="display:block">No sessions yet. Add a subject, then start the timer to log your first one.</li>';
+    : `<li class="empty" style="display:block">${fv ? 'No sessions for this subject yet.' : 'No sessions yet. Add a subject, then start the timer to log your first one.'}</li>`;
+  $('moreBtn').hidden = all.length <= shown;
+  $('moreBtn').textContent = `Show more (${all.length - shown} older)`;
   if (editing) { const el = $('edit-' + editing); if (el) el.focus() }
 }
 
 function drawChart(now) {
-  const days = [...Array(7)].map((_,i) => addDays(now, i-6));
+  const days = [...Array(7)].map((_, i) => addDays(now, i - 6));
   const vals = days.map(d => minsOn(dayKey(d)));
-  const W = 560, H = 190, L = 34, B = 24, T = 10, cw = (W-L)/7;
-  const max = Math.max(state.goal, ...vals, 30), top = Math.ceil(max/30)*30;
-  const y = v => T + (H-T-B) * (1 - v/top);
+  const W = 560, H = 190, L = 34, B = 24, T = 10, cw = (W - L) / 7;
+  const top = Math.ceil(Math.max(state.goal, ...vals, 30) / 30) * 30;
+  const y = v => T + (H - T - B) * (1 - v / top);
   let g = '';
-  for (let v = 0; v <= top; v += top/3) g += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${Math.round(v)}</text>`;
+  for (let v = 0; v <= top; v += top / 3) g += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${Math.round(v)}</text>`;
   g += `<line x1="${L}" x2="${W}" y1="${y(state.goal)}" y2="${y(state.goal)}" stroke="var(--hl)" stroke-width="2" stroke-dasharray="5 4"/>`;
-  days.forEach((d,i) => {
-    const x = L + i*cw + cw*0.2, w = cw*0.6, v = vals[i];
-    g += `<rect x="${x}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="4" fill="${i===6?'var(--accent)':'color-mix(in srgb, var(--accent) 45%, var(--card))'}"><title>${v} min</title></rect>`;
-    g += `<text x="${x+w/2}" y="${H-6}" text-anchor="middle">${d.toLocaleDateString('en-GB',{weekday:'short'})}</text>`;
+  days.forEach((d, i) => {
+    const x = L + i * cw + cw * 0.2, w = cw * 0.6, v = vals[i];
+    g += `<rect x="${x}" y="${y(v)}" width="${w}" height="${y(0) - y(v)}" rx="4" fill="${i === 6 ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 45%, var(--card))'}"><title>${v} min</title></rect>`;
+    g += `<text x="${x + w/2}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString('en-GB', { weekday:'short' })}</text>`;
   });
   $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Minutes studied each day for the last 7 days; dashed line is your daily goal">${g}</svg>`;
 }
 
 function drawHeat(now) {
   const WEEKS = 26, C = 11, G = 3, L = 26, T = 16;
-  const mon = addDays(now, -((now.getDay() + 6) % 7));       // Monday of this week
+  const mon = addDays(now, -((now.getDay() + 6) % 7));
   const start = addDays(mon, -(WEEKS - 1) * 7);
   const lvl = v => !v ? 0 : v < state.goal / 2 ? 1 : v < state.goal ? 2 : v < state.goal * 1.5 ? 3 : 4;
   const tKey = dayKey(now);
   let g = '', total = 0, best = null, days = 0;
-  ['Mon','','Wed','','Fri','',''].forEach((n,r) => { if (n) g += `<text x="0" y="${T + r*(C+G) + 9}">${n}</text>` });
+  ['Mon','','Wed','','Fri','',''].forEach((n, r) => { if (n) g += `<text x="0" y="${T + r*(C+G) + 9}">${n}</text>` });
   for (let w = 0; w < WEEKS; w++) {
-    const wStart = addDays(start, w*7);
     for (let r = 0; r < 7; r++) {
-      const d = addDays(wStart, r);
-      if (d.getDate() === 1 || (w === 0 && r === 0)) g += `<text x="${L + w*(C+G)}" y="10">${d.toLocaleDateString('en-GB',{month:'short'})}</text>`;
+      const d = addDays(start, w * 7 + r);
+      if ((d.getDate() === 1 && w < WEEKS - 1) || (w === 0 && r === 0 && d.getDate() < 22)) g += `<text x="${L + w*(C+G)}" y="10">${d.toLocaleDateString('en-GB', { month:'short' })}</text>`;
       if (d > now) continue;
       const k = dayKey(d), v = minsOn(k);
       total += v; if (v) days++;
@@ -267,54 +393,51 @@ function drawHeat(now) {
       g += `<rect class="l${lvl(v)}${k === tKey ? ' today' : ''}" x="${L + w*(C+G)}" y="${T + r*(C+G)}" width="${C}" height="${C}" rx="2"><title>${fmtDate(k)}: ${v ? v + ' min' : 'no study'}</title></rect>`;
     }
   }
-  const W = L + WEEKS*(C+G), H = T + 7*(C+G);
-  $('heat').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Study minutes per day over the last 6 months, darker squares mean more study">${g}</svg>`;
+  $('heat').innerHTML = `<svg viewBox="0 0 ${L + WEEKS*(C+G)} ${T + 7*(C+G)}" role="img" aria-label="Study minutes per day over the last 6 months, darker squares mean more study">${g}</svg>`;
   $('heatTotal').textContent = `${(total/60).toFixed(1)}h over ${days} day${days === 1 ? '' : 's'}`;
   $('heatBest').textContent = best ? `Best day: ${fmtDate(best.k)}, ${best.v} min` : 'Each square is one day. It fills in as you study.';
 }
 
-let editing = null;
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmtDate = k => new Date(k+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-function addSession(subject, mins, date, note) {
-  const s = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), subject, mins, date };
-  if (note && note.trim()) s.note = note.trim().slice(0, 200);
-  state.sessions.push(s);
-  save(); render();
-}
+// ---------- timer ----------
+// Stopwatch counts up. Pomodoro counts down focus, then a break (long break after every 4th round).
+// Timer state is saved, so a refresh or closed tab doesn't lose a running session.
+const TKEY = KEY + '-timer';
+let T = Object.assign({ mode: 'stopwatch', phase: 'focus', rounds: 0, startAt: null, elapsed: 0 }, store.get(TKEY) || {});
+let tick = null;
+const total = () => T.elapsed + (T.startAt ? Date.now() - T.startAt : 0);
+const isLong = () => T.rounds > 0 && T.rounds % 4 === 0;
+const phaseMs = () => (T.phase === 'focus' ? state.pomo.focus : isLong() ? state.pomo.long : state.pomo.short) * 60000;
+const fmt = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return (s >= 3600 ? Math.floor(s/3600) + ':' : '') + pad(Math.floor(s/60) % 60) + ':' + pad(s % 60) };
+const persistTimer = () => store.set(TKEY, Object.assign({}, T, { subject: $('subject').value, note: $('note').value }));
 
-// timer: stopwatch counts up; Pomodoro counts down 25 min focus, then a 5 min break (15 min after every 4th round)
-const FOCUS = 25, SHORT = 5, LONG = 15;
-let startAt = null, elapsed = 0, tick = null, mode = 'stopwatch', phase = 'focus', rounds = 0;
-const total = () => elapsed + (startAt ? Date.now() - startAt : 0);
-const phaseMs = () => (phase === 'focus' ? FOCUS : (rounds % 4 === 0 ? LONG : SHORT)) * 60000;
-const fmt = ms => { const s = Math.max(0, Math.ceil(ms/1000)); return (s>=3600? Math.floor(s/3600)+':' : '') + pad(Math.floor(s/60)%60) + ':' + pad(s%60) };
 function showClock() {
-  if (mode === 'pomo') {
-    const left = phaseMs() - total();
-    $('clock').textContent = fmt(left);
-    if (startAt && left <= 0) phaseDone();
-  } else $('clock').textContent = fmt(total());
-  $('pomoInfo').hidden = mode !== 'pomo';
-  $('phase').textContent = phase === 'focus' ? 'Focus' : (rounds % 4 === 0 ? 'Long break' : 'Break');
-  $('phase').classList.toggle('break', phase !== 'focus');
-  $('round').textContent = `Round ${rounds % 4 + (phase === 'focus' ? 1 : 0) || 4} of 4 · ${rounds} done`;
+  const pomo = T.mode === 'pomo';
+  if (pomo && T.startAt && phaseMs() - total() <= 0) return phaseDone();
+  const text = pomo ? fmt(phaseMs() - total()) : fmt(total());
+  $('clock').textContent = text;
+  $('pomoInfo').hidden = !pomo;
+  const label = T.phase === 'focus' ? 'Focus' : isLong() ? 'Long break' : 'Break';
+  $('phase').textContent = label;
+  $('phase').classList.toggle('break', T.phase !== 'focus');
+  $('round').textContent = T.phase === 'focus' ? `Round ${T.rounds % 4 + 1} of 4 · ${T.rounds} done` : `${T.rounds} done`;
+  $('startBtn').textContent = T.startAt ? 'Pause' : T.elapsed ? 'Resume' : 'Start';
+  $('stopBtn').disabled = !T.startAt && !T.elapsed;
+  $('stopBtn').textContent = pomo && T.phase !== 'focus' ? 'Skip break' : 'Stop & save';
+  document.title = T.startAt ? `${text} · ${pomo ? label : $('subject').value || 'Studying'}` : 'Revision Tracker';
 }
-function run() { startAt = Date.now(); clearInterval(tick); tick = setInterval(showClock, 250); $('startBtn').textContent = 'Pause'; $('stopBtn').disabled = false }
+function startTick() { clearInterval(tick); tick = setInterval(showClock, 250) }
 function phaseDone() {
-  clearInterval(tick); startAt = null; elapsed = 0; beep();
-  if (phase === 'focus') {
-    rounds++;
-    addSession($('subject').value, FOCUS, dayKey(new Date()), $('note').value);
-    phase = 'break';
-    $('timerMsg').textContent = `Saved ${FOCUS} min of ${$('subject').value}. Break time.`;
-    run();
+  clearInterval(tick); beep();
+  if (T.phase === 'focus') {
+    T.rounds++;
+    addSession($('subject').value, state.pomo.focus, dayKey(new Date()), $('note').value);
+    T.phase = 'break'; T.elapsed = 0; T.startAt = Date.now(); startTick();
+    $('timerMsg').textContent = `Saved ${state.pomo.focus} min of ${$('subject').value}. Time for a ${isLong() ? 'long ' : ''}break.`;
   } else {
-    phase = 'focus';
+    T.phase = 'focus'; T.elapsed = 0; T.startAt = null;
     $('timerMsg').textContent = 'Break over. Press Start for the next focus round.';
-    $('startBtn').textContent = 'Start';
   }
-  showClock();
+  persistTimer(); showClock();
 }
 function beep() {
   try {
@@ -324,30 +447,67 @@ function beep() {
       o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + .25) });
   } catch(e) {}
 }
-$('startBtn').onclick = () => {
-  if (!state.subjects.length) { $('timerMsg').textContent = 'Add a subject first.'; return }
-  if (startAt) { elapsed += Date.now() - startAt; startAt = null; clearInterval(tick); $('startBtn').textContent = 'Resume' }
-  else { run(); $('timerMsg').textContent = '' }
-};
+function toggleTimer() {
+  if (!state.subjects.length) { $('timerMsg').textContent = 'Add a subject first, in the Subjects section.'; return }
+  if (T.startAt) { T.elapsed += Date.now() - T.startAt; T.startAt = null; clearInterval(tick) }
+  else { T.startAt = Date.now(); startTick(); $('timerMsg').textContent = '' }
+  persistTimer(); showClock();
+}
+function resetTimer(keepRounds) { clearInterval(tick); T.startAt = null; T.elapsed = 0; T.phase = 'focus'; if (!keepRounds) T.rounds = 0; persistTimer(); showClock() }
+$('startBtn').onclick = toggleTimer;
 $('stopBtn').onclick = () => {
-  const mins = Math.round(total()/60000), onBreak = mode === 'pomo' && phase !== 'focus';
-  resetTimer();
-  if (onBreak) { $('timerMsg').textContent = 'Break ended early.'; return }
+  const mins = Math.round(total() / 60000), onBreak = T.mode === 'pomo' && T.phase !== 'focus';
+  resetTimer(true);
+  if (onBreak) { $('timerMsg').textContent = 'Break skipped. Press Start when you are ready.'; return }
   if (mins < 1) { $('timerMsg').textContent = 'Session was under a minute, so it was not saved.'; return }
   addSession($('subject').value, mins, dayKey(new Date()), $('note').value);
-  $('note').value = '';
+  $('note').value = ''; persistTimer();
   $('timerMsg').textContent = `Saved ${mins} min of ${$('subject').value}.`;
 };
-function resetTimer() { clearInterval(tick); startAt = null; elapsed = 0; phase = 'focus'; $('startBtn').textContent = 'Start'; $('stopBtn').disabled = true; showClock() }
-$('resetBtn').onclick = () => { rounds = 0; resetTimer(); $('timerMsg').textContent = '' };
-$('mode').onchange = () => { mode = $('mode').value; rounds = 0; resetTimer(); $('timerMsg').textContent = '';
-  try { localStorage.setItem(KEY + '-mode', mode) } catch(e) {} };
-try { const m = localStorage.getItem(KEY + '-mode'); if (m === 'pomo') { mode = m; $('mode').value = m } } catch(e) {}
+$('resetBtn').onclick = () => { resetTimer(false); $('timerMsg').textContent = '' };
+$('mode').onchange = () => { T.mode = $('mode').value; resetTimer(false); $('timerMsg').textContent = '' };
+$('subject').onchange = $('note').oninput = persistTimer;
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest('input, select, textarea, button, summary, label')) return;
+  e.preventDefault(); toggleTimer();
+});
+for (const [id, k, max] of [['pFocus','focus',180],['pShort','short',60],['pLong','long',90]])
+  $(id).onchange = () => { const v = parseInt($(id).value, 10); if (v >= 1 && v <= max) { state.pomo[k] = v; save(); render(); showClock() } else $(id).value = state.pomo[k] };
 
-// CSV export / import
+// ---------- forms ----------
+$('mDate').value = dayKey(new Date());
+$('manual').onsubmit = e => { e.preventDefault(); const m = parseInt($('mMins').value, 10);
+  if (!state.subjects.length || !(m > 0)) return;
+  addSession($('mSubject').value, m, $('mDate').value, $('mNote').value); $('mMins').value = ''; $('mNote').value = '' };
+$('addSubject').onsubmit = e => { e.preventDefault(); const n = $('newSub').value.trim();
+  if (!n || state.subjects.some(s => s.name.toLowerCase() === n.toLowerCase())) return;
+  const used = state.subjects.map(s => s.color), color = COLORS.find(c => !used.includes(c)) || COLORS[state.subjects.length % COLORS.length];
+  state.subjects.push({ name: n, color }); $('newSub').value = ''; save(); render(); showClock() };
+$('addExam').onsubmit = e => { e.preventDefault(); const n = $('eName').value.trim(), d = $('eDate').value;
+  if (!n || !d) return; state.exams.push({ id: newId(), name: n, date: d }); $('eName').value = ''; $('eDate').value = ''; save(); render() };
+$('goal').onchange = () => { const g = parseInt($('goal').value, 10); if (g > 0) { state.goal = g; save(); render() } };
+$('filter').onchange = () => { shown = 15; renderLog() };
+$('moreBtn').onclick = () => { shown += 15; renderLog() };
+document.addEventListener('click', e => {
+  const t = e.target.dataset; if (!t) return;
+  if (t.note) { editing = editing === t.note ? null : t.note; renderLog() }
+  if (t.del) withUndo('Session deleted.', () => { state.sessions = state.sessions.filter(s => s.id !== t.del) });
+  if (t.rmsub) withUndo(`${t.rmsub} removed. Its sessions are kept.`, () => { state.subjects = state.subjects.filter(s => s.name !== t.rmsub) });
+  if (t.rmexam) withUndo('Exam removed.', () => { state.exams = state.exams.filter(x => x.id !== t.rmexam) });
+});
+document.addEventListener('submit', e => {
+  const id = e.target.dataset.save; if (!id) return;
+  e.preventDefault();
+  const s = state.sessions.find(x => x.id === id), v = $('edit-' + id).value.trim();
+  if (s) { if (v) s.note = v.slice(0, 200); else delete s.note }
+  editing = null; save(); render();
+});
+
+// ---------- CSV ----------
 const csvCell = v => /[",\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
 function toCSV() {
-  const rows = [...state.sessions].sort((a,b) => a.date.localeCompare(b.date)).map(s => [s.date, s.subject, s.mins, s.note || ''].map(csvCell).join(','));
+  const rows = [...state.sessions].sort((a, b) => a.date.localeCompare(b.date)).map(s => [s.date, s.subject, s.mins, s.note || ''].map(csvCell).join(','));
   return ['date,subject,minutes,note', ...rows].join('\n');
 }
 function parseCSV(text) {
@@ -372,8 +532,7 @@ $('exportBtn').onclick = () => {
   $('dataMsg').textContent = `Exported ${state.sessions.length} sessions. If no file appeared, use Copy CSV and paste it into a spreadsheet.`;
 };
 $('copyBtn').onclick = () => {
-  const csv = toCSV();
-  navigator.clipboard.writeText(csv).then(() => $('dataMsg').textContent = 'Copied. Paste it into Excel, Google Sheets or a text file.',
+  navigator.clipboard.writeText(toCSV()).then(() => $('dataMsg').textContent = 'Copied. Paste it into Excel, Google Sheets or a text file.',
     () => $('dataMsg').textContent = 'Your browser blocked copying. Use Export CSV instead.');
 };
 $('importFile').onchange = e => {
@@ -381,16 +540,17 @@ $('importFile').onchange = e => {
   file.text().then(text => {
     const rows = parseCSV(text.trim()).filter(r => r.length >= 3);
     if (rows.length && rows[0][0].toLowerCase() === 'date') rows.shift();
-    const good = rows.filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r[0].trim()) && r[1].trim() && parseInt(r[2],10) > 0);
+    const good = rows.filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r[0].trim()) && r[1].trim() && parseInt(r[2], 10) > 0);
     if (!good.length) { $('dataMsg').textContent = 'No sessions found. The file needs date, subject and minutes columns (note is optional), with dates like 2026-11-04.'; return }
     const seen = new Set(state.sessions.map(s => `${s.date}|${s.subject}|${s.mins}`));
     let added = 0;
-    good.forEach(([d, sub, m, note], i) => {
+    good.forEach(([d, sub, m, note]) => {
       d = d.trim(); sub = sub.trim(); m = parseInt(m, 10);
-      if (!state.subjects.some(s => s.name.toLowerCase() === sub.toLowerCase())) state.subjects.push({ name: sub, color: COLORS[state.subjects.length % COLORS.length] });
-      const name = state.subjects.find(s => s.name.toLowerCase() === sub.toLowerCase()).name, k = `${d}|${name}|${m}`;
+      let s = state.subjects.find(x => x.name.toLowerCase() === sub.toLowerCase());
+      if (!s) { s = { name: sub, color: COLORS[state.subjects.length % COLORS.length] }; state.subjects.push(s) }
+      const k = `${d}|${s.name}|${m}`;
       if (seen.has(k)) return; seen.add(k);
-      const row = { id: Date.now().toString(36) + i, subject: name, mins: m, date: d };
+      const row = { id: newId(), subject: s.name, mins: m, date: d };
       if (note && note.trim()) row.note = note.trim().slice(0, 200);
       state.sessions.push(row); added++;
     });
@@ -400,28 +560,16 @@ $('importFile').onchange = e => {
   e.target.value = '';
 };
 
-// forms & actions
-$('mDate').value = dayKey(new Date());
-$('manual').onsubmit = e => { e.preventDefault(); const m = parseInt($('mMins').value,10);
-  if (!state.subjects.length || !(m > 0)) return; addSession($('mSubject').value, m, $('mDate').value, $('mNote').value); $('mMins').value = ''; $('mNote').value = '' };
-$('addSubject').onsubmit = e => { e.preventDefault(); const n = $('newSub').value.trim();
-  if (!n || state.subjects.some(s => s.name.toLowerCase() === n.toLowerCase())) return;
-  state.subjects.push({ name: n, color: COLORS[state.subjects.length % COLORS.length] }); $('newSub').value = ''; save(); render() };
-$('goal').onchange = () => { const g = parseInt($('goal').value,10); if (g > 0) { state.goal = g; save(); render() } };
-document.addEventListener('click', e => {
-  const del = e.target.dataset.del, rm = e.target.dataset.rm, nt = e.target.dataset.note;
-  if (nt) { editing = editing === nt ? null : nt; render() }
-  if (del) { state.sessions = state.sessions.filter(s => s.id !== del); save(); render() }
-  if (rm !== undefined) { state.subjects.splice(+rm, 1); save(); render() }
-});
-document.addEventListener('submit', e => {
-  const id = e.target.dataset.save; if (!id) return;
-  e.preventDefault();
-  const s = state.sessions.find(x => x.id === id), v = $('edit-' + id).value.trim();
-  if (s) { if (v) s.note = v.slice(0, 200); else delete s.note }
-  editing = null; save(); render();
-});
-render(); showClock();
+// ---------- start ----------
+render();
+$('mode').value = T.mode;
+const savedT = store.get(TKEY);
+if (savedT) {
+  if (savedT.subject && [...$('subject').options].some(o => o.value === savedT.subject)) $('subject').value = savedT.subject;
+  if (savedT.note) $('note').value = savedT.note;
+}
+if (T.startAt) { startTick(); $('timerMsg').textContent = 'Your timer kept running while the page was closed.' }
+showClock();
 </script>
 </body>
 </html>

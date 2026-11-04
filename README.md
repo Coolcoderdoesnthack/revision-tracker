@@ -1,32 +1,42 @@
 # Revision Tracker
 
-A simple study tracker that runs entirely in your browser. No sign-up, no server.
+A study tracker that runs entirely in your browser. No sign-up, no server, no tracking.
+
+**Live site:** https://coolcoderdoesnthack.github.io/revision-tracker/
 
 ## Features
-- Study timer with start, pause and save
-- Pomodoro mode: 25 min focus, 5 min break, a 15 min break every 4th round, with a beep and auto-logging
-- Subjects with colour tags
-- Daily goal with a dashed goal line on the chart
-- Day streak and weekly hours
+
+**Timing**
+- Stopwatch or Pomodoro mode, with focus, break and long-break lengths you can change
+- Pomodoro beeps and logs each focus round automatically
+- The timer keeps running if you refresh or close the tab
+- The time left shows in the browser tab title
+- Press `Space` to start or pause
+- Add a note to any session ("Chapter 4 practice questions")
+
+**Planning**
+- Exam countdown with days and weeks left, and exams within a week highlighted
+- Daily goal shown as a line on the weekly chart
+
+**Progress**
+- Minutes today, last 7 days, current streak and best streak
 - 7-day bar chart
 - 6-month heatmap of study days, like GitHub's contribution graph
-- Notes on each session (add them while timing, when logging by hand, or later)
-- Manual logging for sessions you forgot to time
-- Light and dark mode
-- Data saved in your browser (localStorage)
-- CSV export, copy and import (including notes), so you can back up your sessions or open them in Excel / Google Sheets
+- Subject breakdown for the last 30 days
+
+**Records**
+- Session list filtered by subject, with "Show more"
+- Log a session by hand for time you forgot to record
+- Undo after deleting a session, subject or exam
+- CSV export, copy and import (with notes) for backups or spreadsheets
+- Light and dark mode, works on phones
 
 ## Run it
-Open `index.html` in any browser. That's it.
+Open `index.html` in any browser. Your data is stored in that browser (localStorage), so export a CSV now and then as a backup.
 
 ## Put it online with GitHub Pages
-1. Create a new repository and upload `index.html` and `README.md`.
-2. Go to **Settings → Pages**.
-3. Under **Branch**, pick `main` and `/ (root)`, then **Save**.
-4. After a minute your tracker is live at `https://<your-username>.github.io/<repo-name>/`.
+1. Go to **Settings → Pages** in this repo.
+2. Under **Branch**, pick `main` and `/ (root)`, then **Save**.
+3. After a minute or two it's live at `https://<your-username>.github.io/revision-tracker/`.
 
-## Ideas for next versions
-- Subject breakdown pie chart
-- Exam countdowns
-
-Built with plain HTML, CSS and JavaScript.
+Built with plain HTML, CSS and JavaScript in a single file.
